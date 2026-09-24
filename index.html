@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lucid Web IDE</title>
+<link rel="stylesheet" href="playground.css">
+</head>
+<body class="dark">
+<header>
+  <h1>Lucid</h1>
+  <nav class="menubar">
+    <div class="menu"><button data-menu="file">File</button><div class="items" id="menu-file"></div></div>
+    <div class="menu"><button data-menu="analyze">Analyze</button><div class="items" id="menu-analyze"></div></div>
+    <div class="menu"><button data-menu="compile">Compile</button><div class="items" id="menu-compile"></div></div>
+    <div class="menu"><button data-action="run" title="run the program on the input (Cmd/Ctrl+Enter)">Run</button></div>
+  </nav>
+  <div class="runbar">
+    <label for="run-program">program</label>
+    <select id="run-program" title="the open program that Run, Analyze and Compile use"></select>
+    <label for="run-input">input</label>
+    <select id="run-input" title="the open input file that Run feeds the interpreter"></select>
+  </div>
+  <nav class="menubar">
+    <div class="menu"><button data-menu="about">About</button><div class="items" id="menu-about"></div></div>
+  </nav>
+  <input type="file" id="open-file" accept=".lcd,.in,.jsonl,.json,.js,.c,.h,.txt,text/plain,text/javascript" multiple hidden>
+  <span class="spacer"></span>
+  <span id="status"></span>
+  <div class="theme"><button id="theme-light" data-theme="light">light</button><button id="theme-dark" data-theme="dark">dark</button></div>
+</header>
+<main>
+  <div class="top" id="top">
+    <section class="pane" id="pane-0">
+      <div class="filetabs" id="pane-0-tabs"></div>
+      <div class="code">
+        <pre id="pane-0-hl" aria-hidden="true"></pre>
+        <textarea id="pane-0-ta" spellcheck="false" wrap="off"></textarea>
+      </div>
+      <div class="empty">no file: drop a tab or a file here, or File &gt; open</div>
+    </section>
+    <div class="gutter v" id="split-v" title="drag to resize"></div>
+    <section class="pane" id="pane-1">
+      <div class="filetabs" id="pane-1-tabs"></div>
+      <div class="code">
+        <pre id="pane-1-hl" aria-hidden="true"></pre>
+        <textarea id="pane-1-ta" spellcheck="false" wrap="off"></textarea>
+      </div>
+      <div class="empty">no file: drop a tab or a file here, or File &gt; open</div>
+    </section>
+  </div>
+  <div class="gutter h" id="split-h" title="drag to resize"></div>
+  <section class="outputpane">
+    <div class="label tabs">
+      <div id="tabstrip"></div>
+      <div class="menu" id="tabmore"><button data-menu="tabs" title="more tabs">&#x25BE;</button><div class="items" id="menu-tabs"></div></div>
+      <span id="output-title"></span>
+    </div>
+    <pre id="output"></pre>
+  </section>
+</main>
+<script src="playground.bc.js"></script>
+<script src="playground.js"></script>
+</body>
+</html>

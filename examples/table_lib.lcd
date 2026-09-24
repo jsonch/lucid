@@ -1,0 +1,30 @@
+// The asynchronous install events from the library, instantiated at two
+// tables: a miss learns the entry for next time.
+include <memops.lcd>;
+include <eth_base.lcd>;
+include <tables.lcd>;
+parser main = eth_base.main;
+fun generate = eth_base.generate;
+
+type res_t = { uint32 val; bool found; };
+action res_t hit(uint32 x)(uint32 a) { return res_t { val = x + a; found = true; }; }
+action res_t miss(uint32 unused)(uint32 a) { return res_t { val = a; found = false; }; }
+
+global ExactTable.t<<uint32, uint32, uint32, res_t>> exact = ExactTable.create(4, [hit; miss], miss, 0);
+global TernaryTable.t<<(uint32, uint16), uint32, uint32, res_t>> pfx = TernaryTable.create(4, [hit; miss], miss, 0);
+
+event get(uint32 k, uint32 a);
+handle get(uint32 k, uint32 a) {
+  res_t r = ExactTable.lookup(exact, k, a);
+  match r.found with
+    | true -> printf("hit %d -> %d", k, r.val);
+    | _ -> generate(tables.exact_install(exact, hit, k, a));
+}
+
+event get2(uint32 k, uint16 p, uint32 a);
+handle get2(uint32 k, uint16 p, uint32 a) {
+  res_t r = TernaryTable.lookup(pfx, (k, p), a);
+  match r.found with
+    | true -> printf("prefix hit (%d, %d) -> %d", k, p, r.val);
+    | _ -> generate(tables.ternary_install(pfx, hit, (k, p), (0xffffff00, 0), a));
+}

@@ -1,0 +1,16 @@
+// Count to 10, one per second. A handler can hold a generated event back:
+// Event.delay(e, ns) enqueues e after that many nanoseconds of the node's
+// clock (Sys.time48 reads the clock, in nanoseconds), so each count
+// schedules the next one a second later (plus the recirculation latency,
+// 500 ns unless configured). The interpreter runs the delayed events in
+// time order after the input ends.
+event count(uint32 n);
+
+handle count(uint32 n) {
+  printf("count %d at %d ns", n, Sys.time48());
+  match n with
+    | 10 -> drop();
+    | _ -> generate(Event.delay(count(n + 1), 1000000000));
+}
+
+parser main(bitstring pkt) { continue dispatch_event(pkt); }

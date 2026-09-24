@@ -1,0 +1,54 @@
+include <memops.lcd>;
+
+// record type, like a struct
+type pkt_t = { uint8 kind; uint32 idx; uint32 val; };
+
+// a module is similar to a namespace
+module counter {
+  // the type of a counter's data
+  type t = { IntArray.t counts; uint32 size; };
+
+  // create a counter
+  fun t create(comptime uint32 size) {
+    return t { counts = IntArray.create(size); size = size; };
+  }
+
+  // operationo on a counter
+  fun void bump(t c, uint32 idx) {
+    match idx < c.size with
+      | true -> IntArray.setm(c.counts, idx, memops.incr, 1);
+      | _ -> drop();
+  }
+}
+
+// helper operations on an intarray in a module
+module IntArrayAsync {
+  event getAsync(IntArray.t arr, uint32 idx);
+  event getResult(IntArray.t arr, uint32 idx, uint32 val);
+
+  handle getAsync(IntArray.t arr, uint32 idx) {
+    generate_port(ingress_port(), getResult(arr, idx, IntArray.get(arr, idx)));
+  }
+
+  handle getResult(IntArray.t arr, uint32 idx, uint32 val) {
+    drop();
+  }
+}
+// allocate some globals, shared across processing
+global IntArray.t hits = IntArray.create(4);
+global counter.t c = counter.create(8);
+
+
+event touch@1(pkt_t p);
+
+handle touch(pkt_t p) {
+  match p.kind with
+    | 0 -> IntArray.set(hits, p.idx, p.val);
+    | 1 -> counter.bump(c, p.idx);
+    | 2 -> generate(IntArrayAsync.getAsync(hits, p.idx));
+    | _ -> generate(IntArrayAsync.getAsync(c.counts, p.idx));
+}
+
+parser main(bitstring pkt) {
+  continue dispatch_event(pkt);
+}

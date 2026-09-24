@@ -1,0 +1,24 @@
+// Externs (notes/externs.md): a module implemented in JavaScript, called
+// from a handler, with scalars, a record, and a vector crossing the
+// boundary; `note` keeps state in the module.
+module hashes {
+  extern "hash.js";
+
+  type pair = { uint32 a; uint32 b; };
+
+  extern fun uint32 mix(uint32 x, uint32 y);
+  extern fun pair swap(pair p);
+  extern fun uint32 sum(uint32[3] xs);
+  extern fun uint32[2] halves(uint64 v);
+  extern fun bool seen(uint32 x);
+}
+
+event go(uint32 x, uint32 y);
+
+handle go(uint32 x, uint32 y) {
+  uint32 m = hashes.mix(x, y);
+  hashes.pair p = hashes.swap(hashes.pair { a = x; b = y; });
+  uint32 s = hashes.sum([x; y; m]);
+  uint32[2] h = hashes.halves(0x100000002);
+  printf("mix %d swap %d %d sum %d halves %d %d seen %b", m, p.a, p.b, s, h[0], h[1], hashes.seen(x));
+}

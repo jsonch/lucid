@@ -1,0 +1,64 @@
+// Two nodes linked by a cable: a sends requests to b, b replies.
+// One source file describes the system; `lcd compile` lowers it whole,
+// `lcd compile --node a` projects one leaf, `lcd run` runs both with the
+// link as a queue between them. Events shared between nodes are declared
+// in a module; each node handles the ones it cares about, lexically over
+// its own state. Ports are comptime handles created by Port.create(); a
+// link is an assumption about the cabling, and changes no code.
+include <memops.lcd>;
+
+module proto {
+  event req(uint32 i);
+  event resp(uint32 i, uint32 r);
+}
+
+module sender {
+  type t = { IntArray.t req_ct; IntArray.t resp_ct; port to_recv; };
+  comptime fun t create(port to_recv) {
+    return t { req_ct = IntArray.create(1); resp_ct = IntArray.create(1); to_recv = to_recv; };
+  }
+  fun void send_req(t self, uint32 i) {
+    IntArray.setm(self.req_ct, 0, memops.incr, 1);
+    generate_port(self.to_recv, proto.req(i));
+  }
+  fun void on_resp(t self, uint32 i, uint32 r) {
+    IntArray.setm(self.resp_ct, 0, memops.incr, 1);
+    printf("resp %d -> %d", i, r);
+  }
+}
+
+module receiver {
+  type t = { IntArray.t seen; port to_sender; };
+  comptime fun t create(port to_sender) {
+    return t { seen = IntArray.create(1); to_sender = to_sender; };
+  }
+  fun void on_req(t self, uint32 i) {
+    IntArray.setm(self.seen, 0, memops.incr, 1);
+    generate_port(self.to_sender, proto.resp(i, i + 1));
+  }
+}
+
+node a {
+  port ctl = Port.create();
+  port link_b = Port.create();
+  global sender.t s = sender.create(link_b);
+  event start(uint32 i);
+  handle start(uint32 i) { sender.send_req(s, i); }
+  handle proto.resp(uint32 i, uint32 r) { sender.on_resp(s, i, r); }
+  parser main(bitstring pkt) { continue dispatch_event(pkt); }
+}
+
+node b {
+  port link_a = Port.create();
+  port out = Port.create();
+  global receiver.t r = receiver.create(link_a);
+  handle proto.req(uint32 i) {
+    receiver.on_req(r, i);
+    if (i == 7) { generate_port(out, proto.req(i)); }
+  }
+  parser main(bitstring pkt) { continue dispatch_event(pkt); }
+}
+
+link a.ctl -- external;
+link a.link_b -- b.link_a;
+link b.out --> external;

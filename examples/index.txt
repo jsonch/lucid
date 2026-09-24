@@ -1,0 +1,24 @@
+# The playground's examples menu: a [section] label, then the files under
+# it, one per line (a file in this directory). Sections appear in this
+# order, with these labels. A program opened from the menu also opens the
+# .in of the same name and the extern sources it names, when they are here.
+# The [libraries] section lists the compiler's built-in library files
+# (programs/stdlib/, `include <f.lcd>;`) by itself; any file named under
+# it is added to them.
+[programs]
+counter.lcd
+count.lcd
+nodes.lcd
+hash.lcd
+[inputs]
+counter.in
+count.in
+nodes.in
+hash.in
+table_lib.in
+[libraries]
+[externs]
+hash.js
+hash.c
+[tofino programs]
+table_lib.lcd

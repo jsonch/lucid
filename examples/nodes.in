@@ -1,0 +1,10 @@
+# start(3) on a's control port: a sends req(3) to b over the link, b counts
+# it and replies resp(3, 4), which comes back over the link to a.
+{"node": "a", "port": "ctl", "event": "start", "args": [3]}
+# req(7): b also forwards the request out of its external port
+{"node": "a", "port": "ctl", "event": "start", "args": [7]}
+{"node": "a", "get": "s_req_ct"}
+{"node": "a", "get": "s_resp_ct"}
+{"get": "r_seen"}
+# a request injected directly into b on its link port, as if from a
+{"node": "b", "port": "link_a", "event": "proto.req", "args": [1]}

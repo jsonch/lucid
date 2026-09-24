@@ -1,0 +1,115 @@
+/* the colours, light by default; body.dark (the buttons at the right of
+   the bar) swaps the whole set, token colours included */
+:root {
+  font-family: -apple-system, system-ui, sans-serif; font-size: 14px;
+  --bg: #fafafa; --panel: #fff; --strip: #f0f0f0; --hover: #e8e8e8; --control: #f5f5f5;
+  --fg: #222; --dim: #666; --dimmer: #888; --faint: #999; --close: #aaa;
+  --border: #ddd; --border-soft: #e5e5e5; --border-faint: #eee; --sep: #ccc; --menu-border: #888; --control-border: #aaa;
+  --accent: #000080; --accent-fg: #fff; --err: #a40000; --shadow: rgba(0, 0, 0, 0.15);
+  --t-kw: #a626a4; --t-ty: #0b7285; --t-num: #986801; --t-str: #50a14f; --t-key: #4078f2; --t-cmt: #8a8d94; --t-pp: #986801; --t-err: #d00;
+}
+body.dark {
+  color-scheme: dark;
+  --bg: #1b1b1b; --panel: #1f1f1f; --strip: #2a2a2a; --hover: #383838; --control: #333;
+  --fg: #d4d4d4; --dim: #9d9d9d; --dimmer: #858585; --faint: #6e6e6e; --close: #777;
+  --border: #3c3c3c; --border-soft: #333; --border-faint: #2e2e2e; --sep: #444; --menu-border: #555; --control-border: #555;
+  --accent: #4b6fd6; --accent-fg: #fff; --err: #f47067; --shadow: rgba(0, 0, 0, 0.5);
+  --t-kw: #c678dd; --t-ty: #56b6c2; --t-num: #d19a66; --t-str: #98c379; --t-key: #61afef; --t-cmt: #7f848e; --t-pp: #d19a66; --t-err: #e06c75;
+}
+body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--fg); }
+header { display: flex; align-items: center; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--panel); height: 36px; }
+header h1 { font-size: 15px; margin: 0 16px 0 0; }
+.spacer { flex: 1; }
+#status { font-size: 12px; color: var(--dim); }
+/* light / dark, at the right of the bar */
+.theme { display: flex; margin-left: 8px; }
+.theme button { font: inherit; font-size: 12px; border: 1px solid var(--border); background: var(--strip); color: var(--dim); padding: 1px 8px; cursor: default; }
+.theme button + button { border-left: 0; }
+.theme button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+/* the menu bar, in the classic layout: a menu opens under its title, a
+   submenu pops out to the right of its entry, the hovered entry inverts */
+.menubar { display: flex; height: 100%; }
+.menu { position: relative; display: flex; }
+.menu > button { border: 0; background: none; padding: 0 10px; font: inherit; color: inherit; cursor: default; }
+.menu > button:hover, .menu.open > button { background: var(--accent); color: var(--accent-fg); }
+.items { display: none; position: absolute; top: 100%; left: 0; z-index: 10; min-width: 160px; padding: 2px 0; margin: 0; background: var(--panel); border: 1px solid var(--menu-border); }
+.menu.open > .items { display: block; }
+.entry { position: relative; }
+.entry > .items { top: -3px; left: 100%; }
+.entry.open > .items { display: block; }
+.entry > button { display: flex; width: 100%; box-sizing: border-box; border: 0; background: none; padding: 3px 12px 3px 16px; font: inherit; color: inherit; text-align: left; cursor: default; white-space: nowrap; }
+.entry:hover > button, .entry.open > button { background: var(--accent); color: var(--accent-fg); }
+.entry > button .key, .entry > button .arrow { margin-left: auto; padding-left: 24px; }
+.entry > button .arrow { padding-left: 16px; }
+.items .sep { border-top: 1px solid var(--sep); margin: 3px 1px; }
+.items .head { padding: 4px 12px 1px 8px; font-size: 11px; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.items .head + .head, .items .entry + .head { border-top: 1px solid var(--border-faint); margin-top: 3px; }
+
+/* beside Run: which open program and input it uses */
+.runbar { display: flex; align-items: center; gap: 6px; margin-left: 8px; font-size: 12px; color: var(--dim); }
+.runbar select { font: inherit; font-size: 12px; max-width: 180px; }
+
+/* the layout: two file panes side by side over the output pane */
+main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.top { flex: none; height: 55%; display: flex; min-height: 0; }
+section { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pane { flex: 1; position: relative; background: var(--panel); }
+#pane-0 { flex: 0 0 50%; }
+.outputpane { flex: 1; }
+/* the splitters between panes (dragged in playground.js) */
+.gutter { flex: none; background: var(--border); }
+.gutter.v { width: 5px; cursor: col-resize; }
+.gutter.h { height: 5px; cursor: row-resize; }
+.gutter:hover, .gutter.dragging { background: var(--accent); }
+body.resizing { user-select: none; cursor: inherit; }
+.label { padding: 4px 8px; font-size: 12px; color: var(--dim); background: var(--strip); border-bottom: 1px solid var(--border-soft); }
+textarea, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; margin: 0; border: 0; padding: 8px; resize: none; tab-size: 4; line-height: 1.4; }
+#output { flex: 1; overflow: auto; white-space: pre; background: var(--panel); color: var(--fg); }
+
+/* the tab strips, all the same fixed height: a pane's file tabs (the
+   open files, one shown; draggable to the other pane) and the output
+   pane's result tabs */
+.filetabs, .label.tabs { flex: none; box-sizing: border-box; height: 26px; display: flex; align-items: stretch; padding: 0; font-size: 12px; color: var(--dim); background: var(--strip); border-bottom: 1px solid var(--border-soft); }
+.filetabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.ftab, .tab { flex: none; display: flex; align-items: center; gap: 4px; padding: 0 6px 0 12px; border-right: 1px solid var(--border); white-space: nowrap; cursor: default; }
+.ftab:hover, .tab:hover { background: var(--hover); }
+.ftab.active, .tab.active { background: var(--panel); color: var(--fg); margin-bottom: -1px; border-bottom: 1px solid var(--panel); }
+.ftab .close, .tab .close { border: 0; background: none; font: inherit; font-size: 14px; line-height: 1; color: var(--close); padding: 0 3px; cursor: default; }
+.ftab .close:hover, .tab .close:hover { color: var(--err); }
+.tab { padding-right: 12px; }
+.tab .close { margin-right: -8px; }
+.pane.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.pane .empty { position: absolute; top: 26px; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--faint); background: var(--panel); }
+.pane.hasfile .empty { display: none; }
+/* the slim "yes / no / confirm close?" under a tab's x */
+.confirm { position: fixed; z-index: 20; display: flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 12px; background: var(--panel); color: var(--fg); border: 1px solid var(--menu-border); box-shadow: 0 2px 6px var(--shadow); }
+.confirm button { font: inherit; font-size: 12px; border: 1px solid var(--control-border); background: var(--control); color: var(--fg); padding: 0 8px; cursor: default; }
+.confirm button:hover, .confirm button:focus { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); outline: none; }
+
+/* the output pane's tabs: "output", and after Compile > c one per
+   generated file (closable); the ones that do not fit are behind the
+   arrow, and the active tab's description is at the right */
+#output-title { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; color: var(--dimmer); }
+#tabstrip { flex: 1; display: flex; overflow: hidden; min-width: 0; }
+.tab.hidden { display: none; }
+#tabmore { display: none; border-right: 1px solid var(--border); }
+#tabmore.shown { display: flex; }
+#tabmore > button { padding: 0 8px; }
+#tabmore > .items { left: auto; right: 0; }
+#output.err { color: var(--err); }
+
+/* an editor: a transparent textarea over a <pre> that shows the same
+   text highlighted (repainted on each edit) */
+.code { position: relative; flex: 1; min-height: 0; }
+.code pre, .code textarea { position: absolute; inset: 0; box-sizing: border-box; white-space: pre; overflow-wrap: normal; }
+.code pre { overflow: hidden; pointer-events: none; background: var(--panel); color: var(--fg); }
+.code textarea { overflow: auto; background: transparent; color: transparent; caret-color: var(--fg); outline: none; }
+.t-kw { color: var(--t-kw); }
+.t-ty { color: var(--t-ty); }
+.t-num { color: var(--t-num); }
+.t-str { color: var(--t-str); }
+.t-key { color: var(--t-key); }
+.t-cmt { color: var(--t-cmt); font-style: italic; }
+.t-pp { color: var(--t-pp); }
+.t-err { text-decoration: underline wavy var(--t-err); text-decoration-skip-ink: none; }
