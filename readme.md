@@ -64,4 +64,7 @@ to your local host, to use with node, e.g., `node lcd.js --help`.
 
 There is also an MCP server that you can start with `node lcd.js mcp` 
 (tools lucid_check, lucid_run, lucid_compile, lucid_topology,
-lucid_examples; the overview and these examples as resources).
+lucid_examples; the docs and these examples as resources).
+
+Agents: start with llms.txt, beside this readme. It says how to get and
+run the compiler, and how to write a program with it.

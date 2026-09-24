@@ -56,13 +56,13 @@
 //     and also [] when the program does not compile.
 //
 //   lcd.examples() -> {name, text}[]
-//     The files of the repository's programs/examples/ directory at build
-//     time, its index.txt (the sections of the examples menu) among
-//     them. The page lists the live examples/ directory beside it when
-//     it can (see "the examples" below) and falls back to these.
+//     The example files, as built into the script, index.txt (the
+//     sections of the examples menu) among them. The page lists the
+//     live examples/ directory beside it when it can (see "the
+//     examples" below) and falls back to these.
 //
 //   lcd.stdlib() -> {name, text}[]
-//     The built-in library files (programs/stdlib/ at build time), which
+//     The built-in library files, which
 //     a program includes as `include <name>;`; a quoted include names a
 //     file beside the program (an open tab, here). The "libraries"
 //     section of the examples menu shows them.
@@ -550,7 +550,7 @@ function perNode(f, lang, what) {
 }
 // Compile > c: the generated files, one tab each, named as the compiler
 // writes them, in a directory per node for a multi-node program (the
-// layout scripts/shared_test.sh uses); the makefile and the user's own
+// layout `lcd c -o` writes for each node); the makefile and the user's own
 // extern sources (open files) are left out
 function compileC() {
   const nodes = lcd.nodes(program());
