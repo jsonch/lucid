@@ -113,3 +113,7 @@ textarea, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size
 .t-cmt { color: var(--t-cmt); font-style: italic; }
 .t-pp { color: var(--t-pp); }
 .t-err { text-decoration: underline wavy var(--t-err); text-decoration-skip-ink: none; }
+
+/* the note for agents and screen readers first in <body>: visually
+   hidden, but kept in the text (not display: none, which extractors drop) */
+.agent-note { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
