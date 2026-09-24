@@ -3,11 +3,13 @@ Lucid Lite playground
 
 This repo hosts a github pages site (jsonch.github.io/lucid) 
 with an experimental front end and web IDE for Lucid, 
-a network programming language (github.com/princetonuniversity/lucid).
+a network programming language. The syntax and feature set 
+supported here is an extension of the main Lucid codebase, 
+at github.com/princetonuniversity/lucid.
 
-The web page has a compiler and interpreter that compiles to 
-JavaScript, so everything can run in the browser or be 
-downloaded and run locally with minimal dependencies.
+The web page in this repo has a compiler and interpreter that compiles 
+to JavaScript, so everything can run in the browser or be downloaded 
+and run locally with minimal dependencies.
 
 Below is an LLM-generated description of the web IDE.
 
