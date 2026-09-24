@@ -82,7 +82,12 @@
 //     this for every open file before each compiler call.
 //
 //   lcd.readme() -> string
-//     The page's readme (About > readme opens it as a tab).
+//     The page's readme.
+//
+//   lcd.docs() -> {name, text}[]
+//     The site's docs, as built into the script: readme.md, reference.md
+//     (the language), commands.md (the command line), llms.txt (for
+//     agents). The About menu opens each as a tab.
 //
 //   lcd.version() -> string
 //
@@ -268,7 +273,9 @@ function renderTabs(p) {
     d.title = "click to show, double-click to rename, drag to the other pane";
     const l = document.createElement("span"); l.textContent = name; d.appendChild(l);
     const x = document.createElement("button"); x.className = "close"; x.textContent = "×"; x.title = `close ${name}`;
-    x.onclick = e => { e.stopPropagation(); askClose(x, () => closeFile(name)); };
+    // closing without asking, for now; askClose(x, ...) asks first
+    // x.onclick = e => { e.stopPropagation(); askClose(x, () => closeFile(name)); };
+    x.onclick = e => { e.stopPropagation(); closeFile(name); };
     d.appendChild(x);
     d.onclick = () => { focused = p; showFile(p, name); };
     d.ondblclick = () => renameFile(name);
@@ -660,20 +667,25 @@ menus.file = () => [
   { id: "file-save", label: activeFile() ? `save ${activeFile().name}` : "save", action: () => { const f = activeFile(); if (f) download(f.name, f.text); } },
   { id: "file-save-output", label: `save output as ${outputFileName()}`, action: () => download(outputFileName(), playground.getResult().text) },
   { id: "file-rename", label: "rename…", action: () => { const f = activeFile(); if (f) renameFile(f.name); } },
-  { id: "file-close", label: activeFile() ? `close ${activeFile().name}` : "close", action: () => { const f = activeFile(); if (!f) return; const t = tabOf(f.name); if (t) askClose(t, () => closeFile(f.name)); else closeFile(f.name); } },
+  // closing without asking, for now (as a tab's x does); the asking version:
+  // { id: "file-close", label: activeFile() ? `close ${activeFile().name}` : "close", action: () => { const f = activeFile(); if (!f) return; const t = tabOf(f.name); if (t) askClose(t, () => closeFile(f.name)); else closeFile(f.name); } },
+  { id: "file-close", label: activeFile() ? `close ${activeFile().name}` : "close", action: () => { const f = activeFile(); if (f) closeFile(f.name); } },
   "-",
   { id: "file-download-lcdjs", label: "download lcd.js", action: downloadLcdJs },
 ];
-// About: the readme (readme.md beside the page, or the one built into the
-// script) as a tab in the left pane, and the project's repository
-const GITHUB = "https://github.com/princetonuniversity/lucid";
-async function openReadme() {
+// About: the site's docs (each beside the page, or the one built into the
+// script) as a tab in the left pane, and the site's repository
+const GITHUB = "https://github.com/jsonch/lucid";
+const DOCS = ["readme.md", "reference.md", "commands.md", "llms.txt"];
+async function openDoc(name) {
   let text;
-  try { const r = await fetch("readme.md"); if (!r.ok) throw new Error(r.statusText); text = await r.text(); } catch (e) { text = lcd.readme(); }
-  openFile("readme.md", text, panes[0]);
+  try { const r = await fetch(name); if (!r.ok) throw new Error(r.statusText); text = await r.text(); }
+  catch (e) { const d = lcd.docs().find(x => x.name === name); text = d ? d.text : ""; }
+  openFile(name, text, panes[0]);
 }
 menus.about = () => [
-  { id: "about-readme", label: "readme", action: () => { openReadme(); } },
+  ...DOCS.map(n => ({ id: `about-${slug(n.replace(/\.md$/, ""))}`, label: n.replace(/\.md$/, ""), action: () => { openDoc(n); } })),
+  "-",
   { id: "about-github", label: "github", action: () => window.open(GITHUB, "_blank", "noopener") },
 ];
 menus.analyze = () => [

@@ -21,23 +21,22 @@ Download the compiler. GitHub is on most sandboxes' default network allowlists, 
 ```sh
 curl -sSfO https://raw.githubusercontent.com/jsonch/lucid/main/lcd.js \
   || curl -sSfO https://jsonch.github.io/lucid/lcd.js
-node lcd.js --help
 ```
 
-Or clone everything, including the examples and docs: `git clone https://github.com/jsonch/lucid`.
+Or clone everything, including the reference and examples: `git clone https://github.com/jsonch/lucid`.
 
 Then iterate:
 
 ```sh
-node lcd.js check prog.lcd            # parse, resolve, type check
-node lcd.js run prog.lcd < prog.in    # compile, then interpret; JSON lines in, JSON lines out
-node lcd.js run -v prog.lcd < prog.in # the same, tracing every parser, handler, and generate on stderr
-node lcd.js stdlib                    # list the built-in libraries (`include <f.lcd>;`)
+node lcd.js check prog.lcd            # type check
+node lcd.js run prog.lcd < prog.in    # compile and interpret; JSON lines in, JSON lines out
+node lcd.js run -v prog.lcd < prog.in # the same, tracing execution on stderr
+node lcd.js --help                    # every command: compiling to C and Lucid, the IR, pcaps
 ```
 
 If both downloads are blocked, tell the user the sandbox needs `raw.githubusercontent.com` or `jsonch.github.io` added to its allowed network domains, and use Route 3 until then.
 
-lcd.js can also serve the compiler over MCP (JSON-RPC on stdin/stdout), with the tools `lucid_check`, `lucid_run`, `lucid_compile`, `lucid_topology`, and `lucid_examples`, and the overview and examples as resources. For Claude Code:
+lcd.js can also serve the compiler over MCP (JSON-RPC on stdin/stdout), with tools to check, run, and compile programs, and the docs and examples as resources. For Claude Code:
 
 ```sh
 claude mcp add lucid -- node /absolute/path/to/lcd.js mcp
@@ -55,66 +54,39 @@ lcd.examples();                    // -> [{name, text}], the example programs an
 lcd.stdlib();                      // -> [{name, text}], the built-in libraries
 ```
 
-To show your work to the user in the editor, call `playground.open("prog.lcd", programText)`, then `playground.open("prog.in", inputText)`, then `playground.command("run")`. The full API (compiling to C and Lucid, the IR, the topology) is documented at the top of https://jsonch.github.io/lucid/playground.js.
+To show your work to the user in the editor, call `playground.open("prog.lcd", programText)`, then `playground.open("prog.in", inputText)`, then `playground.command("run")`. The full API is documented at the top of https://jsonch.github.io/lucid/playground.js.
 
 ### Route 3: you can only read web pages
 
-Read the overview and examples below, then write the program and an input file. Give both to the user and ask them to open https://jsonch.github.io/lucid/, use File > new program and File > new input, paste the files in, press Run (Ctrl/Cmd+Enter), and paste the output back to you. Keep programs small until the first run succeeds.
+Read the reference and examples below, then write the program and an input file. Give both to the user and ask them to open https://jsonch.github.io/lucid/, use File > new program and File > new input, paste the files in, press Run (Ctrl/Cmd+Enter), and paste the output back to you. Keep programs small until the first run succeeds.
 
 ## Workflow
 
 Don't write the whole program at once:
 
-1. Read the overview, then start from the closest example.
+1. Read Part 1 of the reference, then start from the closest example.
 2. Write a minimal version: the headers, a parser, and one handler. Type check it and fix every error before adding more.
 3. Write an input file that exercises it, including cases that should be rejected, and run it.
 4. Compare the output with what you expected, then extend the program and repeat.
-5. If the program is headed for C, run `node lcd.js c prog.lcd` as well. The C backend has layout rules that the type checker doesn't enforce (see the notes below).
+5. If the program is headed for C, also run `node lcd.js c prog.lcd`. The C backend has layout rules that the type checker doesn't enforce.
+
+If the user has no particular program in mind, suggest a stateful IPv4 firewall: traffic from an inside port opens a flow, and traffic from an outside port gets through only if it is a reply to an open flow.
 
 ## The language
 
-Read the overview before writing a program. It is the complete reference: declarations, types, parsers, handlers, memops, tables, the global access order rule, modules, multi-node programs, externs, and the interpreter's input format.
+The reference covers the whole language, the interpreter's input and output format, and compiling. Part 1 is enough for a single-switch program.
 
-- https://raw.githubusercontent.com/jsonch/lucid/main/overview.md
-- https://jsonch.github.io/lucid/overview.md
-
-The overview mentions paths from the compiler's private source tree (`notes/...`, `programs/...`, `scripts/...`, `src/...`) and a native `lcd` binary with `make` targets. Those are not available. Wherever it says `lcd`, use `node lcd.js`.
-
-Notes that save time:
-
-- There is no `hash` builtin. Use an exact-match table keyed on a tuple, or write a hash as an extern (see examples/hash.lcd).
-- A port is a handle, not an integer. Create ports with `Port.create()` and give each one a parser with `Port.set_parser`. The interpreter numbers a program's ports from 1 in creation order, and those are the numbers to use in `.in` files.
-- A handler may touch each global at most once on any path, in declaration order. To read a table and then install into it, look it up in the handler and generate `tables.exact_install(...)` (from `include <tables.lcd>;`) to install afterward. examples/firewall.lcd shows the pattern.
-- Fields of an event that is compiled to C must total whole bytes, so prefer `uint8` over `bool` in table data that travels in an event.
-- In `.in` files, raw packet bytes are hex and may contain spaces for readability. A line without a `"time"` arrives after everything already scheduled, including self-generated events.
+- https://raw.githubusercontent.com/jsonch/lucid/main/reference.md
+- https://jsonch.github.io/lucid/reference.md
 
 ## Examples
 
-A complete stateful firewall, with an input covering the allowed and blocked cases:
+Each program has an input of the same name, ending in `.in`.
 
-- https://raw.githubusercontent.com/jsonch/lucid/main/examples/firewall.lcd
-- https://raw.githubusercontent.com/jsonch/lucid/main/examples/firewall.in
-
-The IDE's other examples:
-
-- https://raw.githubusercontent.com/jsonch/lucid/main/examples/count.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/count.in: delayed events and time.
 - https://raw.githubusercontent.com/jsonch/lucid/main/examples/counter.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/counter.in: arrays, modules, and tagged events.
+- https://raw.githubusercontent.com/jsonch/lucid/main/examples/count.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/count.in: delayed events and time.
+- https://raw.githubusercontent.com/jsonch/lucid/main/examples/table_lib.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/table_lib.in: tables, in the subset that compiles to the Tofino.
 - https://raw.githubusercontent.com/jsonch/lucid/main/examples/nodes.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/nodes.in: a multi-node program.
 - https://raw.githubusercontent.com/jsonch/lucid/main/examples/hash.lcd, https://raw.githubusercontent.com/jsonch/lucid/main/examples/hash.in, and https://raw.githubusercontent.com/jsonch/lucid/main/examples/hash.js: externs in JavaScript. (https://raw.githubusercontent.com/jsonch/lucid/main/examples/hash.c is the same module in C.)
-- https://raw.githubusercontent.com/jsonch/lucid/main/examples/table_lib.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/table_lib.in: tables, in the subset that compiles to the Tofino.
 
 The same files are at https://jsonch.github.io/lucid/examples/NAME. The built-in libraries print with `node lcd.js stdlib NAME`.
-
-## lcd.js command reference
-
-Usage is `node lcd.js <cmd> [options] <file>`.
-
-- `check`: parse, resolve, and type check. `--elab` prints the program with inferred types, and `--types` prints every expression with its type.
-- `run`: compile, then interpret JSON lines from stdin. `-v` traces on stderr.
-- `compile`: print the lowered program. `--node <name>` prints one node's program, `--manifest` prints ports, links, and event tags as JSON, and `--flows` prints the events sent over each link.
-- `ir`: print one node's lowered IR (`--node <name>`, `--flatten`).
-- `c`: print one node as C, with `--driver rawsock|lpcap|dpdk`. `-o <dir>` writes the files and a makefile.
-- `lucid`: print one node in the Lucid subset, with `--target tofino|c|switch`.
-- `stdlib`: list the built-in libraries. `stdlib <f.lcd>` prints one.
-- `trace2pcap`, `replay`, `pcapcmp`: convert JSON input to pcaps, interpret pcaps, and compare pcaps.
-- `-I <dir>`: also search `<dir>` for `include "f";` files.
