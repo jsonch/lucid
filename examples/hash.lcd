@@ -1,4 +1,4 @@
-// Externs (notes/externs.md): a module implemented in JavaScript, called
+// Externs (reference.md, "Externs"): a module implemented in JavaScript, called
 // from a handler, with scalars, a record, and a vector crossing the
 // boundary; `note` keeps state in the module.
 module hashes {

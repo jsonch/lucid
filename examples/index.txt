@@ -3,7 +3,7 @@
 # order, with these labels. A program opened from the menu also opens the
 # .in of the same name and the extern sources it names, when they are here.
 # The [libraries] section lists the compiler's built-in library files
-# (programs/stdlib/, `include <f.lcd>;`) by itself; any file named under
+# (the ones a program includes as `include <f.lcd>;`) by itself; any file named under
 # it is added to them.
 [programs]
 counter.lcd

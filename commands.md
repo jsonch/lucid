@@ -10,10 +10,10 @@ usage: lcd <cmd> [-v] <file>
                 --flows        print, per link, the events sent over it and what the far end accepts
         ir      compile, then print one leaf's program in the lowered IR (--node <name> picks the leaf;
                 --flatten after flattening nested events into first-order variants, as the C backend sees it)
-        lucid   compile, then print one leaf's program in Lucid (the interop subset,
-                notes/lucid_translation.md): --node <name> picks the leaf of a multi-node
+        lucid   compile, then print one leaf's program in Lucid, for Lucid's own compilers
+                (reference.md, "Compiling to Lucid"): --node <name> picks the leaf of a multi-node
                 program; --target tofino|c|switch (default switch) sets the port width
-        c       compile, then print one leaf's program in C (Lucid's C backend, src/ccore/):
+        c       compile, then print one leaf's program in C (through Lucid's C backend):
                 --node <name> picks the leaf; --driver rawsock|lpcap|dpdk (default rawsock);
                 -o <dir> writes the C file and its makefile there instead of printing
         trace2pcap  turn the JSON input on stdin into one pcap per port in -o <dir> (in_PORT.pcap)
@@ -37,4 +37,4 @@ usage: lcd <cmd> [-v] <file>
   as lcd.js (the JavaScript build from the playground page): node lcd.js <cmd> ..., the same in one file;
         node lcd.js mcp  serve the compiler to an agent client over MCP (JSON-RPC on stdin/stdout):
                 tools lucid_check, lucid_run, lucid_compile, lucid_topology, lucid_examples; the docs
-                and examples as resources (.mcp.json in the repository registers it for Claude Code)
+                and examples as resources; for Claude Code: claude mcp add lucid -- node /path/to/lcd.js mcp

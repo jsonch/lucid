@@ -56,15 +56,12 @@ Time in the interpreter is virtual: an event's stamp is the node's clock
 when it was dequeued, a delayed generate is due that many nanoseconds
 later, and the delayed events run in time order after the input ends.
 
-For agents and scripts
-----------------------
+Downloading
+-----------
 
-The compiler is the global `lcd` (lcd.run, lcd.check, lcd.c, ...) and
-the page is `window.playground` (open, select, command, getResult, ...);
-both are documented at the top of playground.js. Every menu entry has a
-stable id (analyze-typecheck, compile-c, example-count-lcd, ...) that
-playground.command runs. File > download lcd.js gives the same compiler
-as a node script: `node lcd.js check f.lcd` and the other commands for
-the command line, and `node lcd.js mcp` as an MCP server for an agent
-client (tools lucid_check, lucid_run, lucid_compile, lucid_topology,
+File > download lcd.js lets you download the interpreter / compiler 
+to your local host, to use with node, e.g., `node lcd.js --help`.
+
+There is also an MCP server that you can start with `node lcd.js mcp` 
+(tools lucid_check, lucid_run, lucid_compile, lucid_topology,
 lucid_examples; the overview and these examples as resources).
