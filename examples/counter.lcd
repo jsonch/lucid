@@ -13,7 +13,7 @@ module counter {
     return t { counts = IntArray.create(size); size = size; };
   }
 
-  // operationo on a counter
+  // operation on a counter
   fun void bump(t c, uint32 idx) {
     match idx < c.size with
       | true -> IntArray.setm(c.counts, idx, memops.incr, 1);
@@ -38,9 +38,12 @@ module IntArrayAsync {
 global IntArray.t hits = IntArray.create(4);
 global counter.t c = counter.create(8);
 
-
+// events are tagged with a name and optional integer id ("@1")
+// they abstract packets and messages.
 event touch@1(pkt_t p);
 
+// handlers are functions that process events, update 
+// state, and generate new events. 
 handle touch(pkt_t p) {
   match p.kind with
     | 0 -> IntArray.set(hits, p.idx, p.val);
@@ -49,6 +52,9 @@ handle touch(pkt_t p) {
     | _ -> generate(IntArrayAsync.getAsync(c.counts, p.idx));
 }
 
+// a parser reads a bitstring packet and chooses what 
+// handler to dispatch. dispatch_event is a built-in 
+// that automatically selects between events based on their tags.
 parser main(bitstring pkt) {
   continue dispatch_event(pkt);
 }

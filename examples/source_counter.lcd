@@ -1,0 +1,25 @@
+// Source counter: count each source's packets, 
+// and answer queries for a source's count.
+include <memops.lcd>;
+
+// globals are data structures that persist across 
+// packets and events, IntArray is a built in.
+global IntArray.t counts = IntArray.create(256);
+
+// events abstract packets and messages
+event packet(uint8 src, uint8 dst); // a packet from src to dst
+event query(uint8 src); // a query for src's count
+event count(uint8 src, uint32 n); // an answer to a query
+
+// handlers are functions that process events, 
+// update state, and generate new events.
+handle packet(uint8 src, uint8 dst) {
+  IntArray.setm(counts, (uint32) src, memops.incr, 1);  // counts[src] += 1
+  generate_port(1, packet(src, dst));                   // port 1: onward
+}
+
+handle query(uint8 src) {
+  uint32 n = IntArray.get(counts, (uint32) src);
+  printf("packets from source %d: %d", src, n);
+  generate_port(ingress_port(), count(src, n));
+}

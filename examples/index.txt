@@ -6,11 +6,13 @@
 # (the ones a program includes as `include <f.lcd>;`) by itself; any file named under
 # it is added to them.
 [programs]
+source_counter.lcd
 counter.lcd
 count.lcd
 nodes.lcd
 hash.lcd
 [inputs]
+source_counter.in
 counter.in
 count.in
 nodes.in

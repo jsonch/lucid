@@ -1,0 +1,8 @@
+# events, one per line: packets from source 1 and 2 arrive on port 0
+{"port": 0, "event": "packet", "args": [1, 9]}
+{"port": 0, "event": "packet", "args": [1, 9]}
+{"port": 0, "event": "packet", "args": [2, 9]}
+{"port": 0, "event": "packet", "args": [1, 9]}
+# a query from port 3: the count is printed and sent back out of port 3
+{"port": 3, "event": "query", "args": [1]}
+{"port": 3, "event": "query", "args": [2]}

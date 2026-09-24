@@ -83,6 +83,7 @@ The reference covers the whole language, the interpreter's input and output form
 
 Each program has an input of the same name, ending in `.in`.
 
+- https://raw.githubusercontent.com/jsonch/lucid/main/examples/source_counter.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/source_counter.in: the smallest complete program, and the one the web IDE opens with. Events, an array, a printf, and a reply out of the ingress port. Start here.
 - https://raw.githubusercontent.com/jsonch/lucid/main/examples/counter.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/counter.in: arrays, modules, and tagged events.
 - https://raw.githubusercontent.com/jsonch/lucid/main/examples/count.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/count.in: delayed events and time.
 - https://raw.githubusercontent.com/jsonch/lucid/main/examples/table_lib.lcd and https://raw.githubusercontent.com/jsonch/lucid/main/examples/table_lib.in: tables, in the subset that compiles to the Tofino.
