@@ -1,8 +1,8 @@
-# tag 1 = touch: kind 0 sets hits[idx] = val
-{"port": 5, "bytes": "0001 00 00000002 0000002a"}
+# touch: kind 0 sets hits[idx] = val
+{"port": 5, "event": "touch", "args": [{"kind": 0, "idx": 2, "val": 42}]}
 # kind 1 bumps c.counts[idx] twice
-{"port": 5, "bytes": "0001 01 00000003 00000000"}
-{"port": 5, "bytes": "0001 01 00000003 00000000"}
+{"port": 5, "event": "touch", "args": [{"kind": 1, "idx": 3, "val": 0}]}
+{"port": 5, "event": "touch", "args": [{"kind": 1, "idx": 3, "val": 0}]}
 {"get": "hits"}
 {"get": "c_counts"}
 # injected events: static args by name select the instance
@@ -10,4 +10,4 @@
 {"port": 7, "event": "getAsync", "args": ["c_counts", 3]}
 # set a cell directly, then read it back through a self-generated async get (recirc port)
 {"set": "hits", "index": 0, "value": 9}
-{"port": 5, "bytes": "0001 02 00000000 00000000"}
+{"port": 5, "event": "touch", "args": [{"kind": 2, "idx": 0, "val": 0}]}

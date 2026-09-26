@@ -1,6 +1,7 @@
 // Source counter: count each source's packets, 
 // and answer queries for a source's count.
 include <memops.lcd>;
+// include <tofino_eth_base.lcd>;  // uncomment to compile to Lucid (Tofino)
 
 // globals are data structures that persist across 
 // packets and events, IntArray is a built in.

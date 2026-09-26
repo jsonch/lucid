@@ -153,7 +153,7 @@ before its handler and before any use, but the handler may come later.
 | `port p = Port.create();` | A port of this switch. See [Ports and parsers](#ports-and-parsers). |
 | `Port.set_parser(p, f);` | Give port `p` (or every port in a vector) its own entry parser. |
 | `link p -- external;`, `link p -- q;`, `link p --> q;` | A port meets the outside, two ports are linked in both directions, or one direction. Every created port must be linked or external. |
-| `include <f.lcd>;` | Splice in a built-in library file (`lcd stdlib` lists them: `eth_base.lcd`, `memops.lcd`, `tables.lcd`). A file is included once. |
+| `include <f.lcd>;` | Splice in a built-in library file (`lcd stdlib` lists them: `tofino_eth_base.lcd`, `memops.lcd`, `tables.lcd`). A file is included once. |
 | `include "f.lcd";` | Splice in your own file, searched for next to the including file and then in `-I` directories. |
 | `module m { ... }` | A namespace, whose members are referred to as `m.x`. Modules hold no state. |
 | `parser main = p;`, `fun f = e;` | Bind a name to a function-like; sugar for `auto x = e;`. `parser main = p;` makes `p` the entry point. |
@@ -592,9 +592,9 @@ library's parser as its entry point and a library's function in place of
 a builtin:
 
 ```
-include <eth_base.lcd>;
-parser main = eth_base.main;        // the library's parser is the entry point
-fun generate = eth_base.generate;   // and its framing-aware generate replaces the builtin
+include <tofino_eth_base.lcd>;
+parser main = tofino_eth_base.main;        // the library's parser is the entry point
+fun generate = tofino_eth_base.generate;   // and its framing-aware generate replaces the builtin
 
 event foo(uint32 i);
 
@@ -605,9 +605,12 @@ handle foo(uint32 i) {
 }
 ```
 
-The built-in library `eth_base.lcd` puts an Ethernet header in front of
+The built-in library `tofino_eth_base.lcd` puts an Ethernet header in front of
 every tagged event, and its `main` dispatches events and drops
-everything else. Inside a library, builtins are written `Sys.generate`,
+everything else. Including it is enough: a program that declares no
+`main` gets the library's, and every builtin `generate` or
+`generate_port` of a tagged event is framed (raw events stay bare), so
+the two bindings above spell out what the include already does. Inside a library, builtins are written `Sys.generate`,
 `Sys.drop`, and so on, so a program's own `generate` binding cannot
 capture them. Using a bare builtin name before a binding of that name is
 an error. `lcd stdlib f.lcd` prints a built-in library file.
@@ -634,7 +637,7 @@ The rules:
 
 - An event-typed parameter must be the last one. Like a `bitstring` payload, it is the event's variable-size tail.
 - A raw event has no tag and belongs to no set.
-- No event may contain itself through its sets. Bare `event`, the largest set, therefore excludes events that carry a bare `event` themselves.
+- No event may contain itself through its sets. Bare `event`, the largest set, therefore excludes events that carry a bare `event` themselves: an event with parameters that are bare events cannot be used as an argument to other events. To nest one, give its parameter an event set, e.g. `event wrap(event{ping} inner)`.
 - A local declared `auto` takes the exact set of its initializer, and a parameter declared `auto` accepts any event. A handler's parameter has the same set as the event's.
 
 On the wire, a nested event is its tag and fields, so `b(7, base1(1, 2))`
@@ -952,14 +955,17 @@ with Lucid's interpreter, C compiler, and Tofino compiler, and the Lucid
 Lite interpreter is byte-compatible with Lucid's three targets. For
 that, the program must stay in the *interop subset*:
 
-- Tagged events are generated only through the framing library,
-  `eth_base.generate(ev)` and `eth_base.generate_port(p, ev)`, which put
-  Lucid's Ethernet header (ethertype 666) in front of the tag, as Lucid
-  does for its own background events. Raw events are Lucid's packet
-  events and are generated bare with `generate_port`.
-- `main` starts with the library's entry: `parser main = eth_base.main;`,
-  or `eth_base.start(next, pkt)` with the program's own parser after the
-  header.
+- The program includes the framing library, `include <tofino_eth_base.lcd>;`.
+  It puts Lucid's Ethernet header (ethertype 666) in front of every
+  tagged event the program generates, as Lucid does for its own
+  background events. Raw events are Lucid's packet events and go out
+  bare.
+- `main` is the library's entry, with nothing before it: leave `main` out
+  (a program that includes `tofino_eth_base` and declares no `main` gets
+  `tofino_eth_base.main`, which dispatches events and drops everything
+  else), or write `continue tofino_eth_base.start(next, pkt);` with the
+  program's own parser `next(tofino_eth_base.eth_t eth, bitstring pkt)`
+  for non-event packets.
 - No `Port.set_parser`, no event-typed parameters (except the library's
   own), no self-generated raw events, no arithmetic in parsers, and
   `drop()` in a handler only as its last statement.

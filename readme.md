@@ -28,7 +28,8 @@ Compile work on that program. Every open file is beside the program when
 it compiles, so an included library or an extern source is just another
 tab. Cmd/Ctrl+Enter runs.
 
-Results go to the output pane's "output" tab. Compile > c instead opens
+Results go to the output pane's "output" tab. Compile > c (raw socket)
+and c (dpdk), which pick the C program's I/O driver, instead open
 one tab per generated C file, named as the compiler would write it
 (lucidprog.c, or a/lucidprog.c per node of a multi-node program), and
 File > save output saves the tab you are looking at.
@@ -38,7 +39,9 @@ programs, inputs, libraries, externs, tofino programs. Opening a program
 also opens its input and the extern sources it names, and selects the
 pair for Run. The libraries are the compiler's built-in library, which a
 program includes as `include <memops.lcd>;`; a quoted include names an
-open tab instead.
+open tab instead. Most programs have a commented-out
+`// include <tofino_eth_base.lcd>;` line: uncomment it and Compile >
+lucid (tofino) works.
 
 Interpreter input
 -----------------

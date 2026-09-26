@@ -1,10 +1,10 @@
 // The asynchronous install events from the library, instantiated at two
 // tables: a miss learns the entry for next time.
 include <memops.lcd>;
-include <eth_base.lcd>;
+include <tofino_eth_base.lcd>;
 include <tables.lcd>;
-parser main = eth_base.main;
-fun generate = eth_base.generate;
+parser main = tofino_eth_base.main;
+fun generate = tofino_eth_base.generate;
 
 type res_t = { uint32 val; bool found; };
 action res_t hit(uint32 x)(uint32 a) { return res_t { val = x + a; found = true; }; }

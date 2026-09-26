@@ -1,2 +1,2 @@
-# start counting at 1; the rest are delayed generates, a second apart
+# start counting at 1; the rest are delayed generates, 100 ms apart
 {"port": 1, "event": "count", "args": [1]}

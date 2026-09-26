@@ -1,16 +1,15 @@
-// Count to 10, one per second. A handler can hold a generated event back:
+// Count to 10, one every 100 ms. A handler can hold a generated event back:
 // Event.delay(e, ns) enqueues e after that many nanoseconds of the node's
-// clock (Sys.time48 reads the clock, in nanoseconds), so each count
-// schedules the next one a second later (plus the recirculation latency,
-// 500 ns unless configured). The interpreter runs the delayed events in
-// time order after the input ends.
+// clock (Sys.time32 reads the clock, in nanoseconds, wrapping after about
+// 4.3 s), so each count schedules the next one 100 ms later (plus the
+// recirculation latency, 500 ns unless configured). The interpreter runs
+// the delayed events in time order after the input ends.
+// include <tofino_eth_base.lcd>;  // uncomment to compile to Lucid (Tofino)
 event count(uint32 n);
 
 handle count(uint32 n) {
-  printf("count %d at %d ns", n, Sys.time48());
+  printf("count %d at %d ns", n, Sys.time32());
   match n with
     | 10 -> drop();
-    | _ -> generate(Event.delay(count(n + 1), 1000000000));
+    | _ -> generate(Event.delay(count(n + 1), 100000000));
 }
-
-parser main(bitstring pkt) { continue dispatch_event(pkt); }

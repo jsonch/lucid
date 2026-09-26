@@ -6,6 +6,7 @@
 // its own state. Ports are comptime handles created by Port.create(); a
 // link is an assumption about the cabling, and changes no code.
 include <memops.lcd>;
+// include <tofino_eth_base.lcd>;  // uncomment to compile to Lucid (Tofino)
 
 module proto {
   event req(uint32 i);
@@ -45,7 +46,6 @@ node a {
   event start(uint32 i);
   handle start(uint32 i) { sender.send_req(s, i); }
   handle proto.resp(uint32 i, uint32 r) { sender.on_resp(s, i, r); }
-  parser main(bitstring pkt) { continue dispatch_event(pkt); }
 }
 
 node b {
@@ -56,7 +56,6 @@ node b {
     receiver.on_req(r, i);
     if (i == 7) { generate_port(out, proto.req(i)); }
   }
-  parser main(bitstring pkt) { continue dispatch_event(pkt); }
 }
 
 link a.ctl -- external;

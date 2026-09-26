@@ -29,12 +29,12 @@
 //   lcd.compile(programText, node) -> {ok, text}
 //     The program after inlining, printed back as source: with `node` (a
 //     name from lcd.nodes(...)) that node's program, with null the whole
-//     program. This is the "inline" view under Analyze.
+//     program. The menus do not offer it.
 //
 //   lcd.c(programText, node, driver) -> {ok, text, files}
 //     Compiles `node` to a standalone C program with the named driver:
-//     "rawsock" (raw sockets, what the menu offers), "lpcap" (pcap files
-//     in and out), or "dpdk". `text` is the C files of the bundle one
+//     "rawsock" (raw sockets), "lpcap" (pcap files in and out), or
+//     "dpdk"; the menu offers rawsock and dpdk. `text` is the C files of the bundle one
 //     after another, `files` every file of it as {name, text}:
 //     lucidprog.c, the extern modules' sources and generated headers,
 //     lucid_rt.h, makefile -- what `lcd c -o dir` writes.
@@ -98,7 +98,8 @@
 // can be dragged to the other pane), and two selectors beside Run that
 // pick the program (which Analyze and Compile use too) and the input
 // among them. Results go to the output pane's "output" tab, except
-// Compile > c, which opens one closable tab per generated C file. It is
+// Compile > c (either driver), which opens one closable tab per generated
+// C file. It is
 // driven through `window.playground` (defined below, next to the panes):
 //
 //   playground.files() -> string[]
@@ -548,15 +549,16 @@ function perNode(f, lang, what) {
   const rs = nodes.map(n => [n, f(n)]);
   show({ ok: rs.every(([, r]) => r.ok), text: rs.map(([n, r]) => `// ==== node ${n} ====\n${r.text}`).join("\n") }, lang, what);
 }
-// Compile > c: the generated files, one tab each, named as the compiler
-// writes them, in a directory per node for a multi-node program (the
-// layout `lcd c -o` writes for each node); the makefile and the user's own
-// extern sources (open files) are left out
-function compileC() {
+// Compile > c (raw socket) and c (dpdk): the generated files, one tab each,
+// named as the compiler writes them, in a directory per node for a
+// multi-node program (the layout `lcd c -o` writes for each node); the
+// makefile, run script and the user's own extern sources (open files) are
+// left out
+function compileC(driver, driverName) {
   const nodes = lcd.nodes(program());
   const one = (n, dir) => {
-    const what = `C (raw socket driver)${n ? ", node " + n : ""}`;
-    const r = lcd.c(program(), n, "rawsock");
+    const what = `C (${driverName} driver)${n ? ", node " + n : ""}`;
+    const r = lcd.c(program(), n, driver);
     if (!r.ok) return [{ name: `${dir}lucidprog.c`, r, lang: "c", what }];
     return r.files.filter(f => (f.name.endsWith(".c") || f.name.endsWith(".h")) && !files.has(f.name)).map(f => ({ name: dir + f.name, r: { ok: true, text: f.text }, lang: "c", what }));
   };
@@ -692,14 +694,12 @@ menus.analyze = () => [
   { id: "analyze-typecheck", label: "type check", action: act(() => show(lcd.check(program()), null, "type check")) },
   // the link protocol check (lcd.flows) is left out of the menu for now
   { id: "analyze-topology", label: "topology", action: act(() => show(lcd.manifest(program()), "json", "topology")) },
-  "-",
-  { id: "analyze-inline", label: "inline", action: act(() => show(lcd.compile(program(), null), "lcd", "inlined program")) },
 ];
 menus.compile = () => [
-  { id: "compile-c", label: "c", action: act(compileC) },
+  { id: "compile-c", label: "c (raw socket)", action: act(() => compileC("rawsock", "raw socket")) },
+  { id: "compile-c-dpdk", label: "c (dpdk)", action: act(() => compileC("dpdk", "DPDK")) },
   { id: "compile-tofino", label: "lucid (tofino)", action: act(() => perNode(n => lcd.lucid(program(), n, "tofino"), "lucid", "Lucid (tofino)")) },
-  { id: "compile-ir", label: "intermediate representation", action: act(() => perNode(n => lcd.ir(program(), n, false), "lcd", "intermediate representation")) },
-  { id: "compile-flat-ir", label: "flattened ir", action: act(() => perNode(n => lcd.ir(program(), n, true), "lcd", "flattened IR (nested events as variants)")) },
+  { id: "compile-ir", label: "intermediate representation", action: act(() => perNode(n => lcd.ir(program(), n, true), "lcd", "intermediate representation (nested events flattened)")) },
 ];
 menus.tabs = () => hiddenTabs.map(n => ({ id: `tab-${slug(n)}`, label: n, action: () => { active = n; render(); } }));
 
