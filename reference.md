@@ -63,11 +63,12 @@ handle ping(eth_t eth, uint32 n) {
     | _ -> generate_port(ingress_port(), ping(eth, n - 1));
 }
 
-// A raw event: no tag, just the fields. Used for packets leaving as-is.
-raw event passthrough(eth_t eth, bitstring payload);
+// Any other packet: the parser continues to this event with what it read,
+// and the handler sends the packet on as a value, with no tag.
+event passthrough(eth_t eth, bitstring payload);
 
 handle passthrough(eth_t eth, bitstring payload) {
-  generate_port(1, passthrough(eth, payload));
+  generate_port(1, (eth, payload));
 }
 
 parser main(bitstring pkt) {
@@ -109,10 +110,11 @@ array inside a global record or vector is `g_a` or `rows_1`.
 
 The output is also one JSON object per line. Each `printf` prints
 `{"print": "text"}` as it runs. Each packet sent with `generate_port`
-prints its port, its event name, the decoded arguments, and the bytes; a
+prints its port, its event name, the decoded arguments, and the bytes,
+or for a sent value, `{"port": 1, "value": [...], "bytes": "..."}`; a
 declared port prints by name (`"port": "out"`). A `get` prints the
 global's value. `lcd run -v` traces every parser, handler, read, and
-generate on stderr.
+generate on stderr, and says why a packet was dropped.
 
 **Time.** Every node has a clock in nanoseconds, starting at 0, and an
 event is stamped when its node dequeues it. A line may carry `"time": T`,
@@ -141,10 +143,9 @@ before its handler and before any use, but the handler may come later.
 | `type t = T;` | A type alias. |
 | `global T x = e;` | Persistent state. `T` must be a global type such as `IntArray.t`, or a record or vector containing one. The initializer runs once, at compile time, and may allocate. See [Globals and constructors](#globals-and-constructors). |
 | `event e(params);` | A message. On the wire: a 16-bit tag, then the parameters. |
-| `raw event e(params);` | A message with no tag, just the parameters. Used for plain packets. |
 | `event e@7(params);` | An event with a fixed tag, for interfacing with the outside world. |
 | `handle e(params) { ... }` | The handler for event `e`, with the same parameters. One per event per node. The name may be qualified (`handle proto.resp`). |
-| `event e(params) { ... }` | An event declaration and its handler in one. Also with `raw` and `@tag`. |
+| `event e(params) { ... }` | An event declaration and its handler in one. Also with `@tag`. |
 | `parser p(params) { ... }` | A parser: reads packet bits and transfers control. See [Ports and parsers](#ports-and-parsers). |
 | `fun T f(params) { ... }` | A function, inlined at each call. |
 | `comptime fun T f(params) { ... }` | A function evaluated at compile time; every parameter and the result are comptime. |
@@ -180,7 +181,7 @@ before its handler and before any use, but the handler may come later.
 - `ExactTable.t<<K, I, M, R>>`, `TernaryTable.t<<K, I, M, R>>`: match tables. See [Tables and actions](#tables-and-actions).
 - `action<<I, M, R>>`: the type of a table action.
 - `fun<<T1, T2>>`, `parser<<...>>`, `handle<<...>>`: the types of function-likes, for parameters.
-- `event{a, b}`, or a named `eventset`: an event value that is one of the listed events. Bare `event` means any event that does not itself carry a bare `event` parameter. See [Nested events](#nested-events).
+- `event{a, b}`, or a named `eventset`: an event value that is one of the listed events. Bare `event` means any event that does not itself carry a bare `event` parameter. `event{auto}`: an event set the compiler infers; on an event's parameter, one set for the whole program. See [Nested events](#nested-events).
 - `auto`: let the compiler infer this type. `'h` is an inferred type that must be the same everywhere it appears in one declaration.
 - `comptime T`: marks a parameter, local, record field, or function result as holding a compile-time value. This is a stage, not a type. See [Stages](#stages).
 
@@ -197,8 +198,8 @@ comptime T x = e;                 declare a comptime local (substituted away)
 f(args);                          call a function or builtin
 continue p(args);                 transfer control (parsers only; never returns)
 return e;   return;               leave a function
-match e with                      branch on literals, top-level names, _, and tuples of those
-  | 0 -> stmt;
+match e with                      branch on literals, top-level names, _, and tuples of those,
+  | 0 -> stmt;                      or on an event value (see Ports and parsers)
   | (SOME_CONST, _) -> { stmts }
   | _ -> { stmts }
 if (c) { stmts } else { stmts }   branch on a boolean; the else is optional
@@ -263,14 +264,65 @@ the step, and every block ends in one. To skip a field, read it into a
 local you never use. Functions and parsers may not call each other in a
 cycle; only events can loop.
 
+**Reading an event.** A parser may read an event, `event e = read(pkt);`
+for any event or `event{a, b} e = read(pkt);` for one of a set, and must
+then either match it right away or pass it straight to a continue. An
+event pattern names the event and its fields:
+
+```
+parser main(bitstring pkt) {
+  eth_t eth = read(pkt);
+  event e = read(pkt);
+  match e with
+    | resp_wire(i, _) -> continue resp(eth.smac, i, 0);   // pass on what was read before it
+    | _ -> drop();
+}
+```
+
+A field pattern is a name, bound in the arm, or `_`. Each event may be
+named once. Over bare `event` a `_` arm is required; over a set, every
+member not named needs one. In a parser the `_` arm may only drop, since
+an event it does not name cannot be parsed. An inner event is its
+event's last field: name it (it cannot be `_`), then match it inside the
+arm or pass it to a continue.
+
+Passed straight to a continue, as in `continue recv_from(7, e);`, the
+event is accepted whichever member of its set it is (for bare `event`,
+any event this node handles). `continue dispatch_event(pkt)` is the same
+as reading an event and matching it with an arm per handled event.
+
+A packet that is too short for what the parser reads, that carries an
+unknown event tag, or whose inner event is outside its parameter's set,
+is dropped.
+
+**Matching an event in a handler.** A handler or a function may match on
+an event value with the same patterns, for instance to act on an event
+that a lower layer passed up:
+
+```
+event recv_from(uint48 addr, event m);
+handle recv_from(uint48 addr, event m) {
+  match m with
+    | msg(i) -> printf("msg %d from %d", i, addr);
+    | _ -> generate(m);                   // anything else, passed on
+}
+```
+
+The same coverage rules apply, but here `_` may do anything, using the
+matched value by its name, and an inner event may be ignored with `_`.
+A match on a function's `auto` parameter needs a `_` arm. An event with
+an `auto` parameter (a family, see [Stages](#stages)) cannot be named in
+a pattern. On an `event{auto}` parameter, a match without `_` limits the
+set it infers (see [Nested events](#nested-events)).
+
 ## Builtins
 
 | Builtin | Where | Meaning |
 |---|---|---|
 | `read(pkt)` | parsers | Read a value of the declared type: `eth_t eth = read(pkt);`. |
 | `continue dispatch_event(pkt)` | parsers | Read an event tag and run that event's handler on the parameters that follow. |
-| `generate_port(p, e)` | handlers, functions | Serialize event `e` and send it out of port `p`. |
-| `generate(e)` | handlers, functions | Serialize event `e` and feed it back into this switch (recirculate), after the current packet. |
+| `generate_port(p, e)` | handlers, functions | Serialize event `e` (its tag, then its fields) and send it out of port `p`. `e` may also be a value, sent with no tag: see below. |
+| `generate(e)` | handlers, functions | Serialize event `e` (or a value) and feed it back into this switch (recirculate), after the current packet. |
 | `drop()` | anywhere | Stop processing this packet. |
 | `ingress_port()` | anywhere | The port the current packet arrived on. |
 | `Sys.time48()`, `Sys.time32()` | handlers, functions | The current event's timestamp in nanoseconds (48 bits, or the low 32). Every read during one event sees the same value. |
@@ -291,6 +343,18 @@ cycle; only events can loop.
 Every builtin is also available by its module name (`Sys.generate`,
 `Sys.drop`, and so on). A declaration named `generate` shadows the bare
 name but never `Sys.generate`.
+
+**Sending values.** `generate_port(p, v)` with `v` not an event sends
+`v`'s bytes with no tag, as a packet looks on a wire. A tuple sends its
+elements in order: `generate_port(1, (eth, ip, payload))` sends two
+headers and then the payload, and `(hdr, e)` sends the header and then
+event `e`'s tag and fields. A value may hold integers, booleans, records,
+tuples, and vectors, and may end in an event or a `bitstring`; the rest
+must total whole bytes. A port cannot be sent (send `Port.to_int(p)`).
+To handle such a packet, a parser reads it and continues to an ordinary
+event, as `passthrough` does in [A complete program](#a-complete-program).
+`generate(v)` sends a value back to this switch, which requires `main`'s
+default arm to read that layout rather than dispatch tags.
 
 There is no hash builtin. Key a table on a tuple of fields, or write a
 hash as an extern.
@@ -445,10 +509,16 @@ f(..)` marks only the result as comptime.
 
 `lcd compile` shows the result of inlining: nothing comptime remains.
 Handlers are the exception, since an event is generated asynchronously.
-An event with a comptime parameter becomes a separate concrete event,
-with its own tag and handler copy, for each value it is used with. Such
-events cannot have a fixed `@tag`, and an input line injecting one names
-the comptime arguments, e.g. `"args": ["seen", 3]`.
+An event with a comptime parameter becomes a separate event, with its
+own tag and handler copy, for each value it is used with, and an event
+with an `auto` parameter does the same for each type it is given. Such
+an event is a *family*. Its copies are numbered (`getResult__1`,
+`getResult__2`), and `lcd compile --manifest` lists each copy under
+`"instances"` with its event, tag, comptime values, and types. A family
+cannot have a fixed `@tag`. An input line injects a copy by naming the
+event and its comptime arguments (`"args": ["seen", 3]`), or by the
+copy's own name (`"event": "getResult__2"`), which is how to inject a
+copy made for a type.
 
 ## Vectors and loops
 
@@ -605,12 +675,13 @@ handle foo(uint32 i) {
 }
 ```
 
-The built-in library `tofino_eth_base.lcd` puts an Ethernet header in front of
-every tagged event, and its `main` dispatches events and drops
+The built-in library `tofino_eth_base.lcd` puts an Ethernet header in
+front of every tagged event, and its `main` dispatches events and drops
 everything else. Including it is enough: a program that declares no
 `main` gets the library's, and every builtin `generate` or
-`generate_port` of a tagged event is framed (raw events stay bare), so
-the two bindings above spell out what the include already does. Inside a library, builtins are written `Sys.generate`,
+`generate_port` of an event is framed (other values are sent as they
+are), so the two bindings above spell out what the include already does.
+Inside a library, builtins are written `Sys.generate`,
 `Sys.drop`, and so on, so a program's own `generate` binding cannot
 capture them. Using a bare builtin name before a binding of that name is
 an error. `lcd stdlib f.lcd` prints a built-in library file.
@@ -636,19 +707,27 @@ event c(uint32 cdst, event{b} ev);                  // a b, and only a b
 The rules:
 
 - An event-typed parameter must be the last one. Like a `bitstring` payload, it is the event's variable-size tail.
-- A raw event has no tag and belongs to no set.
-- No event may contain itself through its sets. Bare `event`, the largest set, therefore excludes events that carry a bare `event` themselves: an event with parameters that are bare events cannot be used as an argument to other events. To nest one, give its parameter an event set, e.g. `event wrap(event{ping} inner)`.
-- A local declared `auto` takes the exact set of its initializer, and a parameter declared `auto` accepts any event. A handler's parameter has the same set as the event's.
+- No event may contain itself through its sets. So bare `event`, the largest set, excludes events that themselves have a bare `event` parameter, and such an event cannot be passed to another event. To nest one, give its parameter a set, e.g. `event wrap(event{ping} inner)`. A sent value may still carry it: `generate_port(p, (hdr, wrap(..)))`.
+- A local declared `auto` takes the exact set of its initializer. A handler's parameter has the same set as the event's.
+- `event{auto}` on an event's parameter infers the set from the whole program. The event stays one event with one tag, and its set is every event the program passes there: with `tx(1, req(3))` and `tx(2, resp(9))`, it is `event{req, resp}`. Two things cap the set: a match without `_` on the parameter caps it at the events the match names, and passing the parameter to a parameter with a written set caps it at that set. A capped set is exactly the cap, an interface (a packet from outside may carry any of its events), and a construction that passes any other event is an error, reported at the construction. A set that nothing caps and nothing is passed to is empty, which is an error. Unlike an event with a bare `event` parameter, such an event can itself be nested, though not in itself.
+- An event's plain `auto` parameter makes a family, one copy per type (see [Stages](#stages)), for values such as headers. It may not hold an event: declare it `event{auto}`.
+- A function alias used with two events (`fun send = fwd;`, then `send(req(1)); send(resp(2));`) accepts both.
 
 On the wire, a nested event is its tag and fields, so `b(7, base1(1, 2))`
-is `b`'s tag, `7`, `base1`'s tag, `1`, `2`. The interpreter parses a
-nested event by its tag, so a handler receives a value it can generate
-onward or nest again. Matching on an event value is not supported yet.
+is `b`'s tag, `7`, `base1`'s tag, `1`, `2`. A handler receives the
+nested event as a value it can generate onward, nest again, or match on
+(see [Ports and parsers](#ports-and-parsers)).
 
-The C backend flattens nested events into first-order variants (`lcd ir
---flatten` shows the result, and `lcd run --flatten` runs it, with the
-same output). The Lucid backend accepts them only through the framing
-library.
+An event value may be built in branches: a local assigned in the arms
+of an `if` or a `match` (`event{a, b} x; if (c) { x = a(1); } else { x =
+b(2); } generate(x);`), or a function returning different events on
+different paths. Using such a local on a path where nothing was assigned
+to it is an error.
+
+`lcd c` compiles nested events by flattening them into first-order
+events: `lcd ir --flatten` prints the flattened program, and `lcd run
+--flatten` runs it. In Lucid, an event may be nested only in a sent
+value (see [Compiling to Lucid](#compiling-to-lucid)).
 
 # Part 3: Multiple switches, externs, and compiling
 
@@ -748,9 +827,10 @@ its own parser, and the declared `main` as the default.
 **Coverage.** Every tagged event generated on a port must be accepted at
 the other end of its link: by the parser there, which accepts the events
 its leaf handles when it dispatches, and anything when it reads a layout
-first. Raw events and ports chosen at runtime are not checked. A packet
-whose event has no handler on the node it reaches is dropped at run
-time.
+first. Sent values and ports chosen at runtime are not checked, except
+that a value sent to its own node must meet a `main` that reads a
+layout, not one that dispatches tags. A packet whose event has no
+handler on the node it reaches is dropped at run time.
 
 **Tools.** `lcd compile` lowers the whole system as one program (tags
 are shared, and each handler is specialized once). `lcd compile --node
@@ -846,7 +926,7 @@ module vx {
   extern fun void xor_payload(bitstring pkt, uint8 key);
 }
 parser main(bitstring pkt) { eth_t eth = read(pkt); vx.hdr h = vx.read_hdr(pkt); continue tunneled(eth, h, pkt); }
-handle tunneled(eth_t eth, vx.hdr h, bitstring payload) { vx.xor_payload(payload, 0x55); generate_port(2, tunneled(eth, h, payload)); }
+handle tunneled(eth_t eth, vx.hdr h, bitstring payload) { vx.xor_payload(payload, 0x55); generate_port(2, (eth, h, payload)); }
 ```
 
 **Sharing between nodes.** A constructor that takes a `Sys.inst_id`
@@ -958,17 +1038,23 @@ that, the program must stay in the *interop subset*:
 - The program includes the framing library, `include <tofino_eth_base.lcd>;`.
   It puts Lucid's Ethernet header (ethertype 666) in front of every
   tagged event the program generates, as Lucid does for its own
-  background events. Raw events are Lucid's packet events and go out
-  bare.
+  background events. A sent value becomes a Lucid packet event and goes
+  out as it is. A record header followed by an event, `(my_hdr, e)`, is
+  sent as the header, `e`'s tag, and its fields, byte for byte as in the
+  interpreter.
 - `main` is the library's entry, with nothing before it: leave `main` out
   (a program that includes `tofino_eth_base` and declares no `main` gets
   `tofino_eth_base.main`, which dispatches events and drops everything
   else), or write `continue tofino_eth_base.start(next, pkt);` with the
   program's own parser `next(tofino_eth_base.eth_t eth, bitstring pkt)`
-  for non-event packets.
-- No `Port.set_parser`, no event-typed parameters (except the library's
-  own), no self-generated raw events, no arithmetic in parsers, and
+  for non-event packets. `next` may read and match events.
+- No `Port.set_parser`, no event-typed parameters (an event is nested
+  only in a sent value `(my_hdr, e)`), no value sent to itself (a packet
+  event to self is undefined in Lucid), no arithmetic in parsers, and
   `drop()` in a handler only as its last statement.
+
+Event values in locals and function arguments, including ones built in
+branches, and matches on them, compile to Lucid.
 
 Each violation is reported with what to use instead. In the output,
 every port is a `symbolic int` named after the port (`client_to_server`),

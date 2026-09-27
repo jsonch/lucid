@@ -19,6 +19,7 @@ body.dark {
 body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--fg); }
 header { display: flex; align-items: center; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--panel); height: 36px; }
 header h1 { font-size: 15px; margin: 0 16px 0 0; }
+footer.footnote { font-size: 11px; color: var(--dimmer); padding: 2px 12px; border-top: 1px solid var(--border); background: var(--panel); }
 .spacer { flex: 1; }
 #status { font-size: 12px; color: var(--dim); }
 /* light / dark, at the right of the bar */
